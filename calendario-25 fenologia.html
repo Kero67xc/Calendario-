@@ -1,0 +1,1115 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calendario de Ramoneo y Fenología</title>
+    <!-- Incluir la librería jsPDF desde un CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            font-size: 16px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            padding: 20px;
+        }
+        h1 {
+            color: #2c5e1a;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2em;
+        }
+        .filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+            justify-content: center;
+            padding: 15px;
+            background-color: #f0f8e8;
+            border-radius: 8px;
+        }
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+        }
+        .filter-group label {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #2c5e1a;
+            font-size: 1em;
+        }
+        select {
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            min-width: 200px;
+            font-size: 1em;
+        }
+        .calendar {
+            overflow-x: auto;
+            margin-bottom: 30px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+            vertical-align: top;
+        }
+        th {
+            background-color: #4CAF50;
+            color: white;
+            font-size: 1em;
+        }
+        .event {
+            padding: 2px 4px;
+            margin: 2px 0;
+            border-radius: 3px;
+            font-size: 0.8em;
+            display: block;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+        }
+        .floracion {
+            background-color: #ff9999;
+        }
+        .fructificacion {
+            background-color: #ffcc99;
+        }
+        .caida-hojas {
+            background-color: #cc9966;
+        }
+        .crecimiento {
+            background-color: #99cc99;
+        }
+        .info-panel {
+            background-color: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            margin-bottom: 20px;
+        }
+        .notes-panel {
+            background-color: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
+        .info-title {
+            color: #2c5e1a;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 1.5em;
+        }
+        .info-content {
+            display: none;
+        }
+        .info-content.active {
+            display: block;
+        }
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin: 15px 0;
+            justify-content: center;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.9em;
+        }
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 3px;
+        }
+        .month-navigation {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            background-color: #f0f8e8;
+            padding: 10px;
+            border-radius: 8px;
+        }
+        .month-btn {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s;
+            font-size: 1em;
+        }
+        .month-btn:hover {
+            background-color: #3e8e41;
+        }
+        .month-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #2c5e1a;
+        }
+        .month-calendar {
+            margin-bottom: 30px;
+        }
+        .month-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 2px;
+        }
+        .month-day {
+            border: 1px solid #ddd;
+            min-height: 100px; /* Altura mínima, crece con contenido */
+            padding: 5px;
+            background-color: #fff;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+        .day-number {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            font-weight: bold;
+            font-size: 1em;
+            z-index: 1;
+        }
+        .day-events {
+            margin-top: 20px;
+            font-size: 0.75em;
+            overflow-y: auto;
+            max-height: 70px; /* Altura máxima ajustada para contenido */
+            scrollbar-width: thin;
+            scrollbar-color: #4CAF50 #f0f8e8;
+        }
+        .day-events::-webkit-scrollbar {
+            width: 6px;
+        }
+        .day-events::-webkit-scrollbar-thumb {
+            background-color: #4CAF50;
+            border-radius: 3px;
+        }
+        .day-events::-webkit-scrollbar-track {
+            background-color: #f0f8e8;
+        }
+        .day-event {
+            margin-bottom: 2px;
+            padding: 2px;
+            border-radius: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+        }
+        .day-header {
+            background-color: #4CAF50;
+            color: white;
+            text-align: center;
+            padding: 10px;
+            font-weight: bold;
+            font-size: 1em;
+            min-height: 40px; /* Altura mínima, crece con el contenido */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .day-inactive {
+            background-color: #f5f5f5;
+        }
+        .current-day {
+            background-color: #e0f7fa;
+            border: 2px solid #0288d1;
+        }
+        .view-toggle {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .view-btn {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            margin: 0 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s;
+            font-size: 1em;
+        }
+        .view-btn.active {
+            background-color: #2c5e1a;
+        }
+        .view-content {
+            display: none;
+        }
+        .view-content.active {
+            display: block;
+        }
+
+        /* Mejoras responsivas */
+        @media (max-width: 1024px) { /* Tabletas */
+            .container {
+                padding: 15px;
+            }
+            h1 {
+                font-size: 1.5em;
+            }
+            .filter-group label {
+                font-size: 0.9em;
+            }
+            select {
+                min-width: 150px;
+                font-size: 0.9em;
+            }
+            .month-day {
+                min-height: 90px;
+            }
+            .day-events {
+                max-height: 60px;
+            }
+            .day-header {
+                min-height: 35px;
+                font-size: 0.9em;
+            }
+        }
+
+        @media (max-width: 768px) { /* Móviles */
+            .filters {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            select {
+                width: 100%;
+                font-size: 0.85em;
+            }
+            .month-day {
+                min-height: 80px;
+            }
+            .day-events {
+                max-height: 50px;
+                font-size: 0.7em;
+            }
+            .day-header {
+                font-size: 0.8em;
+                padding: 8px;
+                min-height: 30px;
+            }
+            .month-title {
+                font-size: 1em;
+            }
+            .month-btn {
+                padding: 6px 12px;
+                font-size: 0.9em;
+            }
+            .info-title {
+                font-size: 1.2em;
+            }
+            .view-btn {
+                padding: 6px 12px;
+                font-size: 0.9em;
+            }
+            .legend-item {
+                font-size: 0.8em;
+            }
+        }
+
+        @media (max-width: 480px) { /* Móviles pequeños */
+            h1 {
+                font-size: 1.2em;
+            }
+            .filters {
+                padding: 10px;
+            }
+            .month-day {
+                min-height: 70px;
+            }
+            .day-events {
+                max-height: 40px;
+                font-size: 0.65em;
+            }
+            .day-header {
+                font-size: 0.7em;
+                padding: 6px;
+                min-height: 25px;
+            }
+            .month-title {
+                font-size: 0.9em;
+            }
+            .month-btn {
+                padding: 4px 8px;
+                font-size: 0.8em;
+            }
+            .info-title {
+                font-size: 1em;
+            }
+            .view-btn {
+                padding: 4px 8px;
+                font-size: 0.8em;
+            }
+            .legend-item {
+                font-size: 0.7em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Calendario de Ramoneo y Fenología</h1>
+        
+        <div class="filters">
+            <div class="filter-group">
+                <label for="species-filter">Filtrar por Especie:</label>
+                <select id="species-filter">
+                    <option value="all">Todas las Especies</option>
+                    <option value="brownea-grandiceps">Brownea grandiceps</option>
+                    <option value="cassia-fistula">Cassia fístula</option>
+                    <option value="cecropia-sp">Cecropia sp</option>
+                    <option value="guazuma-ulmifolia">Guazuma ulmifolia</option>
+                    <option value="machaerium-capote">Machaerium Capote</option>
+                    <option value="pouteria-laevigata">Pouteria laevigata</option>
+                    <option value="pseudobombax-septenatum">Pseudobombax septenatum</option>
+                    <option value="attalea-butyracea">Attalea butyracea</option>
+                    <option value="attalea-maripa">Attalea maripa</option>
+                    <option value="bixa-sp">Bixa sp. (Bixa orellana)</option>
+                    <option value="coccoloba-caracasana">Coccoloba caracasana</option>
+                    <option value="mangifera-indica">Mangifera indica</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="phase-filter">Filtrar por Estado Fenológico:</label>
+                <select id="phase-filter">
+                    <option value="all">Todos los Estados</option>
+                    <option value="floracion">Floración</option>
+                    <option value="fructificacion">Fructificación</option>
+                    <option value="caida-hojas">Caída de Hojas</option>
+                    <option value="crecimiento">Crecimiento Vegetativo</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-color floracion"></div>
+                <span>Floración</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color fructificacion"></div>
+                <span>Fructificación</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color caida-hojas"></div>
+                <span>Caída de Hojas</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color crecimiento"></div>
+                <span>Crecimiento Vegetativo</span>
+            </div>
+        </div>
+        
+        <div class="view-toggle">
+            <button id="annual-view-btn" class="view-btn active">Vista Anual</button>
+            <button id="monthly-view-btn" class="view-btn">Vista Mensual</button>
+        </div>
+        
+        <div id="annual-view" class="view-content active">
+            <div class="calendar">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Especie</th>
+                            <th>Ene</th>
+                            <th>Feb</th>
+                            <th>Mar</th>
+                            <th>Abr</th>
+                            <th>May</th>
+                            <th>Jun</th>
+                            <th>Jul</th>
+                            <th>Ago</th>
+                            <th>Sep</th>
+                            <th>Oct</th>
+                            <th>Nov</th>
+                            <th>Dic</th>
+                        </tr>
+                    </thead>
+                    <tbody id="calendar-body">
+                        <!-- El contenido será generado dinámicamente por JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div id="monthly-view" class="view-content">
+            <div class="month-navigation">
+                <button id="prev-month" class="month-btn">« Anterior</button>
+                <div id="month-title" class="month-title">Mayo 2025</div>
+                <div>
+                    <button id="current-date-btn" class="month-btn">Ir a Fecha Actual</button>
+                    <button id="next-month" class="month-btn">Siguiente »</button>
+                </div>
+            </div>
+            
+            <div class="month-calendar">
+                <div class="month-grid" id="month-days-header">
+                    <div class="day-header">Domingo</div>
+                    <div class="day-header">Lunes</div>
+                    <div class="day-header">Martes</div>
+                    <div class="day-header">Miércoles</div>
+                    <div class="day-header">Jueves</div>
+                    <div class="day-header">Viernes</div>
+                    <div class="day-header">Sábado</div>
+                </div>
+                <div class="month-grid" id="month-days-grid">
+                    <!-- El contenido será generado dinámicamente por JavaScript -->
+                </div>
+            </div>
+        </div>
+        
+        <div class="info-panel">
+            <h2 class="info-title" id="species-info-title">
+                Información de las Especies
+                <button id="toggle-info-btn" style="background-color: #4CAF50; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-weight: bold;">Ocultar</button>
+            </h2>
+            <div id="species-info-content" class="info-content">
+                <p>Selecciona una especie para ver su información detallada.</p>
+            </div>
+        </div>
+
+        <!-- Nueva sección para registrar poda o nota -->
+        <div class="filters" id="note-section">
+            <button id="download-pdf-btn" style="background-color: #4CAF50; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold;">Descargar Calendario PDF</button>
+            <div class="filter-group">
+                <label>Registrar Poda o Nota</label>
+                <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                    <select id="note-species">
+                        <option value="all">Selecciona una especie</option>
+                        <option value="brownea-grandiceps">Brownea grandiceps</option>
+                        <option value="cassia-fistula">Cassia fístula</option>
+                        <option value="cecropia-sp">Cecropia sp</option>
+                        <option value="guazuma-ulmifolia">Guazuma ulmifolia</option>
+                        <option value="machaerium-capote">Machaerium Capote</option>
+                        <option value="pouteria-laevigata">Pouteria laevigata</option>
+                        <option value="pseudobombax-septenatum">Pseudobombax septenatum</option>
+                        <option value="attalea-butyracea">Attalea butyracea</option>
+                        <option value="attalea-maripa">Attalea maripa</option>
+                        <option value="bixa-sp">Bixa sp. (Bixa orellana)</option>
+                        <option value="coccoloba-caracasana">Coccoloba caracasana</option>
+                        <option value="mangifera-indica">Mangifera indica</option>
+                    </select>
+                    <input type="text" id="note-description" placeholder="Descripción (ej. Poda de ramas para...)" style="padding: 8px; border-radius: 4px; border: 1px solid #ccc; min-width: 200px; flex-grow: 1;">
+                    <input type="date" id="note-date" style="padding: 8px; border-radius: 4px; border: 1px solid #ccc; min-width: 200px; flex-grow: 1;">
+                    <button id="add-note-btn" style="background-color: #4CAF50; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold;">Agregar Nota</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Nueva sección para filtrar notas -->
+        <div class="filters" id="note-filter-section">
+            <div class="filter-group">
+                <label>Filtrar notas por especie</label>
+                <select id="filter-notes-species">
+                    <option value="all">Todas</option>
+                    <option value="brownea-grandiceps">Brownea grandiceps</option>
+                    <option value="cassia-fistula">Cassia fístula</option>
+                    <option value="cecropia-sp">Cecropia sp</option>
+                    <option value="guazuma-ulmifolia">Guazuma ulmifolia</option>
+                    <option value="machaerium-capote">Machaerium Capote</option>
+                    <option value="pouteria-laevigata">Pouteria laevigata</option>
+                    <option value="pseudobombax-septenatum">Pseudobombax septenatum</option>
+                    <option value="attalea-butyracea">Attalea butyracea</option>
+                    <option value="attalea-maripa">Attalea maripa</option>
+                    <option value="bixa-sp">Bixa sp. (Bixa orellana)</option>
+                    <option value="coccoloba-caracasana">Coccoloba caracasana</option>
+                    <option value="mangifera-indica">Mangifera indica</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Sección de Notas Registradas (debajo de las secciones de registro y filtro) -->
+        <div class="notes-panel">
+            <h2 class="info-title" id="notes-title">Notas Registradas</h2>
+            <div id="notes-content" class="info-content">
+                <p>No hay notas registradas aún.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Datos de los árboles y sus fenologías
+        const treeData = [
+            {
+                id: "brownea-grandiceps",
+                name: "Brownea grandiceps",
+                family: "Fabaceae",
+                description: "Árbol o arbusto de 3-10 m, común en bosques húmedos tropicales y subandinos, con flores rojas vistosas en capítulos globosos.",
+                distribution: "Bosques húmedos de la Amazonía, Orinoquía y regiones andinas hasta 1.800 m.",
+                phenology: {
+                    floracion: [4, 5, 6, 7, 8],
+                    fructificacion: [7, 8, 9, 10, 11],
+                    caidaHojas: [12, 1, 2, 3],
+                    crecimiento: [4, 5]
+                },
+                relation: ""
+            },
+            {
+                id: "cassia-fistula",
+                name: "Cassia fístula",
+                family: "Fabaceae",
+                description: "Árbol deciduo o semideciduo, de 6 a 20 m de altura, con flores amarillas en racimos colgantes y frutos en forma de vainas cilíndricas.",
+                distribution: "Se encuentra en regiones cálidas y húmedas, como el Caribe, los valles interandinos, el Magdalena Medio y áreas tropicales hasta los 1.200 m de altitud.",
+                phenology: {
+                    floracion: [2, 3, 4, 5, 6],
+                    fructificacion: [5, 6, 7, 8, 9, 10],
+                    caidaHojas: [12, 1, 2, 3],
+                    crecimiento: [4, 5, 6, 7, 8, 9, 10, 11]
+                },
+                relation: ""
+            },
+            {
+                id: "cecropia-sp",
+                name: "Cecropia sp",
+                family: "Urticaceae",
+                description: "Árbol pionero de rápido crecimiento, 5-20 m, común en bosques secundarios y áreas perturbadas, con frutos pequeños y carnosos.",
+                distribution: "Amplia, desde el Caribe hasta la Amazonía, en altitudes de 0-2.000 m.",
+                phenology: {
+                    floracion: [4, 5, 6, 7, 8, 9],
+                    fructificacion: [6, 7, 8, 9, 10, 11],
+                    caidaHojas: [1, 2, 3],
+                    crecimiento: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+                },
+                relation: ""
+            },
+            {
+                id: "guazuma-ulmifolia",
+                name: "Guazuma ulmifolia",
+                family: "Malvaceae",
+                description: "Árbol de 10-20 m, nativo de América tropical, con frutos pequeños y carnosos.",
+                distribution: "Bosques secos y húmedos, Caribe, Magdalena Medio, hasta 1.500 m.",
+                phenology: {
+                    floracion: [2, 3, 4, 5],
+                    fructificacion: [5, 6, 7, 8, 9],
+                    caidaHojas: [12, 1, 2, 3],
+                    crecimiento: [4, 5, 6]
+                },
+                relation: ""
+            },
+            {
+                id: "machaerium-capote",
+                name: "Machaerium Capote",
+                family: "Fabaceae",
+                description: "Árbol o arbusto de 5-15 m, común en bosques secos y húmedos, con vainas como frutos.",
+                distribution: "Caribe, Magdalena Medio, bosques tropicales hasta 1.000 m.",
+                phenology: {
+                    floracion: [1, 2, 3, 4],
+                    fructificacion: [4, 5, 6, 7, 8],
+                    caidaHojas: [12, 1, 2, 3],
+                    crecimiento: [4, 5, 6, 7]
+                },
+                relation: ""
+            },
+            {
+                id: "pouteria-laevigata",
+                name: "Pouteria laevigata",
+                family: "Sapotaceae",
+                description: "Árbol de 10-25 m, con frutos carnosos comestibles, típico de bosques húmedos.",
+                distribution: "Amazonía, Orinoquía, bosques húmedos hasta 1,500 m.",
+                phenology: {
+                    floracion: [5, 6, 7, 8],
+                    fructificacion: [8, 9, 10, 11, 12],
+                    caidaHojas: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+                    crecimiento: [4, 5, 6, 7, 8, 9, 10, 11]
+                },
+                relation: ""
+            },
+            {
+                id: "pseudobombax-septenatum",
+                name: "Pseudobombax septenatum",
+                family: "Malvaceae",
+                description: "Árbol deciduo de 15-30 m, con flores blancas o rosadas, común en bosques secos.",
+                distribution: "Caribe, valles interandinos, hasta 1,200 m.",
+                phenology: {
+                    floracion: [12, 1, 2, 3],
+                    fructificacion: [4, 5, 6, 7],
+                    caidaHojas: [12, 1, 2, 3],
+                    crecimiento: [4, 5]
+                },
+                relation: ""
+            },
+            {
+                id: "attalea-butyracea",
+                name: "Attalea butyracea",
+                family: "Arecaceae",
+                description: "Palma de 10-20 m, con frutos carnosos, común en bosques húmedos y sabanas.",
+                distribution: "Amazonía, Orinoquía, Caribe, hasta 1,000 m.",
+                phenology: {
+                    floracion: [4, 5, 6, 7, 8],
+                    fructificacion: [8, 9, 10, 11, 12, 1, 2],
+                    caidaHojas: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+                    crecimiento: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+                },
+                relation: ""
+            },
+            {
+                id: "attalea-maripa",
+                name: "Attalea maripa",
+                family: "Arecaceae",
+                description: "Palma de 15-25 m, con frutos grandes y carnosos, típica de bosques húmedos.",
+                distribution: "Amazonía, Orinoquía, hasta 1,200 m.",
+                phenology: {
+                    floracion: [5, 6, 7, 8, 9],
+                    fructificacion: [9, 10, 11, 12, 1, 2],
+                    caidaHojas: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+                    crecimiento: [4, 5, 6, 7, 8, 9, 10, 11]
+                },
+                relation: "Tapirus terrestris (danta): Consume frutas. Los frutos son una fuente clave de alimento en la temporada de fructificación."
+            },
+            {
+                id: "bixa-sp",
+                name: "Bixa sp. (Bixa orellana)",
+                family: "Bixaceae",
+                description: "Arbusto o árbol pequeño de 3-10 m, con frutos en cápsulas espinosas que contienen semillas rojas.",
+                distribution: "Caribe, Amazonía, zonas cálidas hasta 1,800 m.",
+                phenology: {
+                    floracion: [4, 5, 6, 7, 8],
+                    fructificacion: [7, 8, 9, 10, 11],
+                    caidaHojas: [12, 1, 2, 3],
+                    crecimiento: [4, 5, 6, 7]
+                },
+                relation: "Tapirus terrestris (danta): Consume frutas. Las semillas y pulpa de las cápsulas son ingeridas, especialmente en la temporada de lluvias."
+            },
+            {
+                id: "coccoloba-caracasana",
+                name: "Coccoloba caracasana",
+                family: "Polygonaceae",
+                description: "Árbol o arbusto de 5-15 m, con frutos pequeños y carnosos, común en bosques secos y húmedos.",
+                distribution: "Caribe, Magdalena Medio, hasta 1,500 m.",
+                phenology: {
+                    floracion: [2, 3, 4, 5],
+                    fructificacion: [6, 7, 8, 9, 10],
+                    caidaHojas: [12, 1, 2, 3],
+                    crecimiento: [4, 5, 6]
+                },
+                relation: "Tapirus terrestris (danta): Consume frutas. Los frutos carnosos son una fuente de alimento en la temporada de lluvias."
+            },
+            {
+                id: "mangifera-indica",
+                name: "Mangifera indica",
+                family: "Anacardiaceae",
+                description: "Árbol de 10-30 m, cultivado por sus frutos (mangos), común en zonas tropicales.",
+                distribution: "Caribe, valles interandinos, hasta 1,500 m.",
+                phenology: {
+                    floracion: [12, 1, 2, 3],
+                    fructificacion: [4, 5, 6, 7, 8],
+                    caidaHojas: [12, 1, 2, 3],
+                    crecimiento: [3, 4, 5, 6]
+                },
+                relation: "Tapirus terrestris (danta): Consume frutas. Los mangos maduros caídos son consumidos en la temporada de fructificación."
+            }
+        ];
+
+        // Variables para la vista mensual
+        let currentDate = new Date(2025, 4, 3); // Inicializar en Mayo 3, 2025 (mes 4 es mayo porque es zero-based)
+        
+        // Array para almacenar notas
+        let notes = [];
+
+        // Función para generar el calendario anual
+        function generateCalendar() {
+            const speciesFilter = document.getElementById('species-filter').value;
+            const phaseFilter = document.getElementById('phase-filter').value;
+            const calendarBody = document.getElementById('calendar-body');
+            
+            calendarBody.innerHTML = '';
+            
+            let filteredTrees = treeData;
+            if (speciesFilter !== 'all') {
+                filteredTrees = treeData.filter(tree => tree.id === speciesFilter);
+            }
+            
+            filteredTrees.forEach(tree => {
+                const phases = ['floracion', 'fructificacion', 'caidaHojas', 'crecimiento'];
+                const phaseNames = {
+                    'floracion': 'Floración',
+                    'fructificacion': 'Fructificación',
+                    'caidaHojas': 'Caída de Hojas',
+                    'crecimiento': 'Crecimiento'
+                };
+                const phaseClasses = {
+                    'floracion': 'floracion',
+                    'fructificacion': 'fructificacion',
+                    'caidaHojas': 'caida-hojas',
+                    'crecimiento': 'crecimiento'
+                };
+                
+                phases.forEach(phase => {
+                    if (phaseFilter !== 'all' && phaseFilter !== phaseClasses[phase]) {
+                        return;
+                    }
+                    
+                    const row = document.createElement('tr');
+                    row.dataset.treeId = tree.id;
+                    
+                    const nameCell = document.createElement('td');
+                    nameCell.innerHTML = `${tree.name}<br><span class="event ${phaseClasses[phase]}">${phaseNames[phase]}</span>`;
+                    nameCell.style.cursor = 'pointer';
+                    nameCell.onclick = () => showTreeInfo(tree.id);
+                    row.appendChild(nameCell);
+                    
+                    for (let month = 1; month <= 12; month++) {
+                        const cell = document.createElement('td');
+                        if (tree.phenology[phase].includes(month)) {
+                            cell.className = phaseClasses[phase];
+                            cell.innerHTML = '✓';
+                        } else {
+                            cell.innerHTML = '';
+                        }
+                        row.appendChild(cell);
+                    }
+                    
+                    calendarBody.appendChild(row);
+                });
+            });
+        }
+        
+        // Función para generar la vista mensual
+        function generateMonthView() {
+            const speciesFilter = document.getElementById('species-filter').value;
+            const phaseFilter = document.getElementById('phase-filter').value;
+            const monthDaysGrid = document.getElementById('month-days-grid');
+            const monthTitle = document.getElementById('month-title');
+            
+            const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+            monthTitle.textContent = `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
+            
+            monthDaysGrid.innerHTML = '';
+            
+            const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+            const lastDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+            
+            const firstDayOfWeek = firstDay.getDay();
+            
+            for (let i = 0; i < firstDayOfWeek; i++) {
+                const dayCell = document.createElement('div');
+                dayCell.className = 'month-day day-inactive';
+                monthDaysGrid.appendChild(dayCell);
+            }
+            
+            let filteredTrees = treeData;
+            if (speciesFilter !== 'all') {
+                filteredTrees = treeData.filter(tree => tree.id === speciesFilter);
+            }
+            
+            // Obtener la fecha actual
+            const today = new Date();
+            
+            for (let day = 1; day <= lastDay.getDate(); day++) {
+                const dayCell = document.createElement('div');
+                dayCell.className = 'month-day';
+                
+                // Verificar si este día es la fecha actual
+                const currentCellDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
+                if (
+                    currentCellDate.getDate() === today.getDate() &&
+                    currentCellDate.getMonth() === today.getMonth() &&
+                    currentCellDate.getFullYear() === today.getFullYear()
+                ) {
+                    dayCell.classList.add('current-day');
+                }
+                
+                const dayNumber = document.createElement('div');
+                dayNumber.className = 'day-number';
+                dayNumber.textContent = day;
+                dayCell.appendChild(dayNumber);
+                
+                const dayEvents = document.createElement('div');
+                dayEvents.className = 'day-events';
+                
+                const currentMonth = currentDate.getMonth() + 1;
+                
+                filteredTrees.forEach(tree => {
+                    const phases = ['floracion', 'fructificacion', 'caidaHojas', 'crecimiento'];
+                    const phaseNames = {
+                        'floracion': 'Floración',
+                        'fructificacion': 'Fructificación',
+                        'caidaHojas': 'Caída de Hojas',
+                        'crecimiento': 'Crecimiento'
+                    };
+                    const phaseClasses = {
+                        'floracion': 'floracion',
+                        'fructificacion': 'fructificacion',
+                        'caidaHojas': 'caida-hojas',
+                        'crecimiento': 'crecimiento'
+                    };
+                    
+                    phases.forEach(phase => {
+                        if (phaseFilter !== 'all' && phaseFilter !== phaseClasses[phase]) {
+                            return;
+                        }
+                        
+                        if (tree.phenology[phase].includes(currentMonth)) {
+                            const eventDiv = document.createElement('div');
+                            eventDiv.className = `day-event ${phaseClasses[phase]}`;
+                            eventDiv.textContent = `${tree.name} - ${phaseNames[phase]}`;
+                            eventDiv.onclick = () => showTreeInfo(tree.id);
+                            eventDiv.style.cursor = 'pointer';
+                            eventDiv.title = `${tree.name} - ${phaseNames[phase]}`;
+                            dayEvents.appendChild(eventDiv);
+                        }
+                    });
+                });
+                
+                dayCell.appendChild(dayEvents);
+                monthDaysGrid.appendChild(dayCell);
+            }
+            
+            const daysInGrid = firstDayOfWeek + lastDay.getDate();
+            const remainingCells = 7 - (daysInGrid % 7);
+            if (remainingCells < 7) {
+                for (let i = 0; i < remainingCells; i++) {
+                    const dayCell = document.createElement('div');
+                    dayCell.className = 'month-day day-inactive';
+                    monthDaysGrid.appendChild(dayCell);
+                }
+            }
+        }
+        
+        // Función para mostrar información detallada del árbol
+        function showTreeInfo(treeId) {
+            const tree = treeData.find(t => t.id === treeId);
+            const infoContent = document.getElementById('species-info-content');
+            
+            if (tree) {
+                let html = `
+                    <h3>${tree.name}</h3>
+                    <p><strong>Familia:</strong> ${tree.family}</p>
+                    <p><strong>Descripción:</strong> ${tree.description}</p>
+                    <p><strong>Distribución:</strong> ${tree.distribution}</p>
+                    <h4>Fenología anual:</h4>
+                    <ul>
+                        <li><strong>Floración:</strong> ${getMonthsString(tree.phenology.floracion)}</li>
+                        <li><strong>Fructificación:</strong> ${getMonthsString(tree.phenology.fructificacion)}</li>
+                        <li><strong>Caída de hojas:</strong> ${getMonthsString(tree.phenology.caidaHojas)}</li>
+                        <li><strong>Crecimiento vegetativo:</strong> ${getMonthsString(tree.phenology.crecimiento)}</li>
+                    </ul>
+                `;
+                
+                if (tree.relation) {
+                    html += `
+                        <h4>Relación con fauna silvestre:</h4>
+                        <p>${tree.relation}</p>
+                    `;
+                }
+                
+                infoContent.innerHTML = html;
+                infoContent.classList.add('active');
+                document.getElementById('toggle-info-btn').textContent = 'Ocultar';
+            }
+            displayNotes();
+        }
+        
+        // Función para convertir números de mes a nombres de meses
+        function getMonthsString(months) {
+            const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+            return months.map(m => monthNames[m-1]).join(', ');
+        }
+        
+        // Función para ir al mes anterior
+        function goToPreviousMonth() {
+            currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
+            generateMonthView();
+        }
+        
+        // Función para ir al mes siguiente
+        function goToNextMonth() {
+            currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
+            generateMonthView();
+        }
+        
+        // Función para ir a la fecha actual
+        function goToCurrentDate() {
+            currentDate = new Date();
+            generateMonthView();
+        }
+        
+        // Función para cambiar entre vistas
+        function switchView(viewId) {
+            document.querySelectorAll('.view-content').forEach(view => {
+                view.classList.remove('active');
+            });
+            document.querySelectorAll('.view-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            document.getElementById(viewId).classList.add('active');
+            document.getElementById(`${viewId}-btn`).classList.add('active');
+            
+            if (viewId === 'monthly-view') {
+                generateMonthView();
+            }
+        }
+        
+        // Función para agregar una nota
+        function addNote() {
+            const species = document.getElementById('note-species').value;
+            const description = document.getElementById('note-description').value.trim();
+            const date = document.getElementById('note-date').value;
+
+            if (species !== 'all' && description && date) {
+                const noteDate = new Date(date);
+                const formattedDate = `${noteDate.getDate().toString().padStart(2, '0')}/${(noteDate.getMonth() + 1).toString().padStart(2, '0')}/${noteDate.getFullYear()}`;
+                notes.push({ species, description, date: formattedDate });
+                document.getElementById('note-description').value = '';
+                document.getElementById('note-date').value = '';
+                displayNotes();
+            }
+        }
+
+        // Función para mostrar notas
+        function displayNotes() {
+            const filterSpecies = document.getElementById('filter-notes-species').value;
+            const notesContent = document.getElementById('notes-content');
+            let html = '';
+
+            const filteredNotes = filterSpecies === 'all' ? notes : notes.filter(note => note.species === filterSpecies);
+            if (filteredNotes.length > 0) {
+                html = filteredNotes.map((note, index) => `
+                    <p><strong>${note.description}</strong> (${note.date}) (Especie: ${note.species}) 
+                        <button onclick="deleteNote(${index})" style="background-color: #4CAF50; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-left: 10px;">Eliminar</button>
+                    </p>
+                `).join('');
+            } else {
+                html = '<p>No hay notas registradas aún.</p>';
+            }
+            notesContent.innerHTML = html;
+            notesContent.classList.add('active');
+        }
+
+        // Función para eliminar una nota
+        function deleteNote(index) {
+            notes.splice(index, 1);
+            displayNotes();
+        }
+
+        // Función para descargar notas como PDF usando jsPDF
+        function downloadPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const filterSpecies = document.getElementById('filter-notes-species').value;
+            const filteredNotes = filterSpecies === 'all' ? notes : notes.filter(note => note.species === filterSpecies);
+            let yPos = 10;
+
+            doc.setFontSize(16);
+            doc.text('Notas Registradas', 10, yPos);
+            yPos += 10;
+
+            if (filteredNotes.length > 0) {
+                doc.setFontSize(12);
+                filteredNotes.forEach(note => {
+                    const text = `${note.description} (${note.date}) (Especie: ${note.species})`;
+                    doc.text(text, 10, yPos);
+                    yPos += 10;
+                    if (yPos > 280) {
+                        doc.addPage();
+                        yPos = 10;
+                    }
+                });
+            } else {
+                doc.setFontSize(12);
+                doc.text('No hay notas registradas para descargar.', 10, yPos);
+            }
+
+            doc.save('notas_calendario.pdf');
+        }
+
+        // Función para alternar la visibilidad del panel de información de especies
+        function toggleSpeciesInfo() {
+            const infoContent = document.getElementById('species-info-content');
+            const toggleButton = document.getElementById('toggle-info-btn');
+            infoContent.classList.toggle('active');
+            toggleButton.textContent = infoContent.classList.contains('active') ? 'Ocultar' : 'Mostrar';
+        }
+
+        // Inicializar el calendario al cargar la página
+        document.addEventListener('DOMContentLoaded', function() {
+            generateCalendar();
+            generateMonthView();
+            
+            // Agregar eventos a los filtros
+            document.getElementById('species-filter').addEventListener('change', function() {
+                generateCalendar();
+                generateMonthView();
+            });
+            
+            document.getElementById('phase-filter').addEventListener('change', function() {
+                generateCalendar();
+                generateMonthView();
+            });
+            
+            // Agregar eventos a los botones de navegación por mes
+            document.getElementById('prev-month').addEventListener('click', goToPreviousMonth);
+            document.getElementById('next-month').addEventListener('click', goToNextMonth);
+            
+            // Agregar evento al botón de ir a la fecha actual
+            document.getElementById('current-date-btn').addEventListener('click', goToCurrentDate);
+            
+            // Agregar eventos a los botones de cambio de vista
+            document.getElementById('annual-view-btn').addEventListener('click', function() {
+                switchView('annual-view');
+            });
+            
+            document.getElementById('monthly-view-btn').addEventListener('click', function() {
+                switchView('monthly-view');
+            });
+
+            // Agregar evento al botón de agregar nota
+            document.getElementById('add-note-btn').addEventListener('click', addNote);
+
+            // Agregar evento al botón de descargar PDF
+            document.getElementById('download-pdf-btn').addEventListener('click', downloadPDF);
+
+            // Agregar evento al filtro de notas
+            document.getElementById('filter-notes-species').addEventListener('change', displayNotes);
+
+            // Agregar evento para colapsar/expandir la información de la especie (por título)
+            document.getElementById('species-info-title').addEventListener('click', function(e) {
+                if (e.target.id !== 'toggle-info-btn') {
+                    toggleSpeciesInfo();
+                }
+            });
+
+            // Agregar evento al botón de ocultar/mostrar información de la especie
+            document.getElementById('toggle-info-btn').addEventListener('click', toggleSpeciesInfo);
+
+            // Agregar evento para colapsar/expandir las notas
+            document.getElementById('notes-title').addEventListener('click', function() {
+                const notesContent = document.getElementById('notes-content');
+                notesContent.classList.toggle('active');
+            });
+        });
+    </script>
+</body>
+</html>
